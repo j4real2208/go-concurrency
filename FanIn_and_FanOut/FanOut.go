@@ -2,64 +2,55 @@ package faninandfanout
 
 import (
 	"fmt"
-
-	//"sync"
-	"time"
 )
 
 func FanOut(){
-	ch1 , err := read("./FanIn_and_FanOut/file1.csv")
+	ch1 , err := read("./FanIn_and_FanOut/file11.csv")
 	if err != nil {
 		panic(fmt.Errorf("could not read the file %v",err))
 	}
 
-	ch2 , err := read("./FanIn_and_FanOut/file2.csv")
-	if err != nil {
-		panic(fmt.Errorf("could not read the file %v",err))
+	br1 := breakup("1",ch1)
+	br2 := breakup("2",ch1)
+	br3 := breakup("3",ch1)
+
+	for{
+		if br1 == nil && br2 == nil && br3 == nil{
+			break
+		}
+
+		select {
+			case _,ok := <-br1:
+				if !ok{
+					br1=nil
+				}			
+		
+			case _,ok := <-br2:
+				if !ok{
+					br2=nil
+				}
+			case _,ok := <-br3:
+				if !ok{
+					br3=nil
+				}				
+		}		
 	}
+	fmt.Println("All completed cosuming and exiting")
+}
 
-	exit := make(chan struct{})
-
-
-	chM := merge2(ch1,ch2)
+func breakup(worker string,ch <-chan []string) chan struct{} {
+	chE := make(chan struct{})
 
 	go func() {
-	
-		for v:= range chM{
-			fmt.Println(time.Now(),"received","|||",v,"|||")
+		for v:= range ch{
+			fmt.Println(worker,"||",v,"||")
 		}
-		close(exit)		
+		close(chE)
 	}()
-	<-exit
+	return chE
 }
 
 
-// Merging into one channel using waitgroups like mutex concept 
-
-// func merge1(cs ...<-chan []string) (<-chan []string) {
-// 	var wg sync.WaitGroup
-// 	out := make(chan []string)
-
-// 	send := func(c <-chan []string)  {
-// 		for n := range c{
-// 			out <- n
-// 		}
-// 		wg.Done()
-// 	}
-
-// 	wg.Add(len(cs))
-
-// 	for _ , c := range cs {
-// 		go send(c)
-// 	}
-
-// 	go func(){
-// 		wg.Wait()
-
-// 		close(out)
-// 	}()
-// 	return out
-// }
 
 
-// Merging with chan buffer cocept
+
